@@ -984,7 +984,7 @@ const Sync = (() => {
   const SDK = 'https://www.gstatic.com/firebasejs/10.12.2/';
   const PATH = 'lessons/fear-collector/rooms/';
   const able = !!(CFG.apiKey && CFG.databaseURL);
-  let ref = null, code = '', live = false, players = {};
+  let ref = null, code = '', live = false, players = {}, lastErr = '';
   const load = (f) => new Promise((ok, no) => {
     const s = document.createElement('script'); s.src = SDK + f; s.onload = ok; s.onerror = no; document.head.appendChild(s);
   });
@@ -1014,17 +1014,27 @@ const Sync = (() => {
       const i = ids.indexOf(me().id);
       return i < 0 ? -1 : i % FC_CLUES.length;
     },
+    get error() { return lastErr; },
     async connect(c) {
       if (!able) return 'off';
       code = clean(c); if (!code) return 'bad';
+      lastErr = '';
       try {
         if (!window.firebase) { await load('firebase-app-compat.js'); await load('firebase-database-compat.js'); firebase.initializeApp(CFG); }
+      } catch (e) { lastErr = 'the Firebase script did not load'; return 'nosdk'; }
+      /* one real write first: it tells us straight away whether the rules let us in */
+      try {
         ref = firebase.database().ref(PATH + code);
-        ref.on('value', (snap) => { try { apply(snap.val()); } catch (e) { /* keep playing */ } });
-        live = true; renderMates();
-        try { localStorage.setItem('fc-room', code); } catch (e) { /* private mode */ }
-        return 'ok';
-      } catch (e) { live = false; return 'fail'; }
+        await ref.child('ping').set(Date.now());
+      } catch (e) {
+        lastErr = (e && e.message) || String(e); live = false;
+        return /permission|denied/i.test(lastErr) ? 'denied' : 'fail';
+      }
+      ref.on('value', (snap) => { try { apply(snap.val()); } catch (e) { /* keep playing */ } },
+        (e) => { lastErr = (e && e.message) || String(e); });
+      live = true; renderMates();
+      try { localStorage.setItem('fc-room', code); } catch (e) { /* private mode */ }
+      return 'ok';
     },
     /* the avatar is mine only if nobody else in the room has taken it */
     async claim(id, name, avatar) {
@@ -1090,7 +1100,9 @@ function initRoom() {
       row.classList.add('joined'); input.disabled = true; btn.hidden = true;
       if (S.me) Sync.claim(S.me.id, S.me.name, S.me.avatar);
     } else if (r === 'bad') { msg.textContent = 'Write a short code: letters or numbers.'; }
-    else { msg.textContent = "Couldn't reach the room. Check the Firebase settings at the top of the file."; }
+    else if (r === 'denied') { msg.textContent = 'The database refused: ' + Sync.error + ' — open Firebase, Realtime Database, Rules, and allow the branch lessons/fear-collector.'; }
+    else if (r === 'nosdk') { msg.textContent = 'Firebase did not load. Check the internet connection and try again.'; }
+    else { msg.textContent = "Couldn't reach the room: " + (Sync.error || 'unknown error') + '.'; }
   };
   btn.addEventListener('click', go);
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
