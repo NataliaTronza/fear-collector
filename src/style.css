@@ -759,3 +759,21 @@ body.brave main { animation: brave 2.4s ease-in-out; }
 .av-btn.taken { opacity: .4; }
 .av-btn.taken::after { content: 'taken'; position: absolute; left: 50%; top: 38%; transform: translate(-50%, -50%); background: #1b1622e0; color: #f6ecd9; padding: 3px 10px; border-radius: 999px; font-size: 13px; font-weight: 800; letter-spacing: .04em; }
 @media (max-width: 560px) { .room-row { padding: 12px; } .mates-reset { margin-left: 0; } }
+
+/* who said what in the hall, and who broke which mirror */
+.bon-board { margin-top: 22px; }
+.bb-row { display: grid; grid-template-columns: 1fr 180px 180px; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid #1b162218; }
+.bb-row:first-of-type { border-top: 0; }
+.bb-row > p { margin: 0; font-size: 17px; }
+.bb-side { display: flex; flex-direction: column; gap: 4px; }
+.bb-side > b { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: #6b5a50; }
+.bb-side > span { display: flex; flex-wrap: wrap; gap: 4px; min-height: 30px; align-items: center; }
+.bb-side i { font-size: 15px; color: #6b5a5088; font-style: italic; }
+.bb-av { width: 30px; height: 30px; display: inline-block; }
+.bb-av svg, .bb-av img { width: 100%; height: 100%; border-radius: 50%; display: block; }
+.m-by { display: flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 15px; font-weight: 800; color: #f6ecd9aa; }
+.m-by svg, .m-by img { width: 24px; height: 24px; border-radius: 50%; }
+@media (max-width: 700px) {
+  .bb-row { grid-template-columns: 1fr; gap: 6px; }
+  .bb-side { flex-direction: row; align-items: center; gap: 8px; }
+}

@@ -383,6 +383,26 @@ async function enter() {
   scrollToRoom('hall');
 }
 
+
+/* one room's shared state: writes go to Firebase when live, stay local otherwise */
+function roomState(key, paint) {
+  let st = {};
+  onShared(key, (remote) => { st = remote || {}; paint(st); });
+  return {
+    get: () => st,
+    push(patch) {
+      if (Sync.live) { Object.keys(patch).forEach((k) => Sync.set('game/' + key + '/' + k, patch[k])); return; }
+      Object.keys(patch).forEach((k) => {
+        const parts = k.split('/');
+        let o = st;
+        parts.slice(0, -1).forEach((pp) => { if (typeof o[pp] !== 'object' || o[pp] === null) o[pp] = {}; o = o[pp]; });
+        o[parts[parts.length - 1]] = patch[k];
+      });
+      paint(st);
+    },
+  };
+}
+
 /* ================= 1 · THE HALL · BRAVE OR NOPE ================= */
 const BON = [
   'Spend a night alone in this mansion. No phone, no light.',
@@ -401,6 +421,21 @@ const BON_RESULT = [
 function initHall() {
   let i = 0, brave = 0, timer = null, t0 = 0, answered = false;
   const box = $('#bon'), timerEl = $('#bonTimer');
+  const R = roomState('hall', paintBoard);
+  function paintBoard(st) {
+    const board = $('#bonBoard'); if (!board) return;
+    board.hidden = !Sync.live;
+    if (!Sync.live) return;
+    const P = Sync.players;
+    const who = (a, v) => Object.keys(a).filter((id) => a[id] === v)
+      .map((id) => (P[id] ? `<span class="bb-av" title="${esc(P[id].name)}">${artHTML('av_' + P[id].avatar)}</span>` : '')).join('');
+    board.innerHTML = '<p class="card-title">Who said what</p>' + BON.map((q, k) => {
+      const a = (st && st[k]) || {}, b = who(a, 'brave'), n = who(a, 'nope');
+      return `<div class="bb-row"><p>${k + 1}. ${esc(q)}</p>
+        <div class="bb-side"><b>I'd do it</b><span>${b || '<i>nobody yet</i>'}</span></div>
+        <div class="bb-side"><b>No way</b><span>${n || '<i>nobody yet</i>'}</span></div></div>`;
+    }).join('');
+  }
   const stopTimer = () => { clearInterval(timer); timer = null; };
   const show = () => {
     answered = false;
@@ -426,6 +461,7 @@ function initHall() {
     $('#bonSay').textContent = v === 'brave' ? 'Tell the group: "I\'d do it, because..."' : v === 'nope' ? 'Tell the group: "I\'d never do it, because..."' : 'Time\'s up! Silence means nope. "I\'d never do it, because..."';
     $('#bonWhy').hidden = false;
     $('#bonNext').textContent = i < BON.length - 1 ? 'Next situation' : 'See my result';
+    R.push({ [i + '/' + me().id]: v || 'nope' });
     if (v) { Snd.pop(); act.courage(1, ...ptOf(e, $('#bonBtns'))); } else Snd.wrong();
   };
   $('#bonGo').addEventListener('click', () => { Snd.unlock(); Snd.whoosh(); i = 0; brave = 0; $('#bonResult').hidden = true; box.classList.add('running'); show(); });
@@ -443,6 +479,7 @@ function initHall() {
     act.complete('hall', 'Warmed Up', 'Six quick decisions. Nobody ran away.');
     renderPass();
   });
+  paintBoard({});
 }
 
 /* ================= 2 · THE NURSERY · TORCH SEARCH ================= */
@@ -468,8 +505,8 @@ function initNursery() {
   $('#nletters').innerHTML = NLETTERS.map((l, k) => `<span class="nl" data-k="${k}" style="left:${l.x}%;top:${l.y}%;--r:${l.r}deg">${l.ch}</span>`).join('');
   $('#neyes').innerHTML = NEYES.map((e, k) => `<span class="eye-pair" data-k="${k}" style="left:${e.x}%;top:${e.y}%"><i></i><i></i></span>`).join('') +
     GSTARS.map(([x, y]) => `<span class="gstar" style="left:${x}%;top:${y}%"></span>`).join('');
-  const got = {}, eyesSeen = {};
-  let torch = { x: 50, y: 50 }, running = false, open = null, notes = 0;
+  let torch = { x: 50, y: 50 }, running = false, shownNote = null;
+  const R = roomState('nursery', paint);
   const pct = (cx, cy) => { const r = scene.getBoundingClientRect(); return [((cx - r.left) / r.width) * 100, ((cy - r.top) / r.height) * 100]; };
   const dist = (ax, ay, bx, by) => Math.hypot(ax - bx, (ay - by) * 0.75);
   const size = () => { const r = scene.getBoundingClientRect(), d = Math.min(2, devicePixelRatio || 1); cv.width = Math.round(r.width * d); cv.height = Math.round(r.height * d); };
@@ -478,11 +515,11 @@ function initNursery() {
     ctx.globalCompositeOperation = 'source-over'; ctx.clearRect(0, 0, W, H);
     ctx.fillStyle = 'rgba(4,6,10,.975)'; ctx.fillRect(0, 0, W, H);
     ctx.globalCompositeOperation = 'destination-out';
-    const R = W * 0.13 * (1 + Math.sin((tm || 0) / 110) * 0.02 + (Math.random() - 0.5) * 0.025);
+    const RR = W * 0.13 * (1 + Math.sin((tm || 0) / 110) * 0.02 + (Math.random() - 0.5) * 0.025);
     const x = (torch.x / 100) * W, y = (torch.y / 100) * H;
-    const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+    const g = ctx.createRadialGradient(x, y, 0, x, y, RR);
     g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(0.6, 'rgba(0,0,0,.9)'); g.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, R, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, RR, 0, Math.PI * 2); ctx.fill();
   };
   const loop = (tm) => { if (!running) return; draw(tm); requestAnimationFrame(loop); };
   new IntersectionObserver(([en]) => {
@@ -491,6 +528,43 @@ function initNursery() {
   }).observe(scene);
   addEventListener('resize', size);
   const msg = (t) => { const m = $('#nmsg'); m.textContent = t; m.classList.remove('pop'); void m.offsetWidth; m.classList.add('pop'); };
+
+  function paint(st) {
+    st = st || {};
+    const got = st.got || {}, eyes = st.eyes || {}, open = typeof st.open === 'number' ? st.open : -1;
+    const n = Object.keys(got).length;
+    NLETTERS.forEach((l, k) => {
+      const on = !!got[k];
+      $(`.nl[data-k="${k}"]`).classList.toggle('got', on);
+      const slot = $$('#letters span')[k];
+      if (slot) { slot.textContent = on ? l.ch : ''; slot.classList.toggle('on', on); }
+    });
+    NEYES.forEach((e, k) => { const el = $(`.eye-pair[data-k="${k}"]`); if (el) el.classList.toggle('gone', !!eyes[k]); });
+    if (open >= 0) showNote(open, st.note || 0, !!st.solved);
+    else { $('#nnote').hidden = true; shownNote = null; }
+    if (n >= NLETTERS.length) {
+      if (!scene.classList.contains('lit')) { scene.classList.add('lit'); running = false; msg('L, I, G, H, T. You found the light.'); }
+      $('#sayRow').hidden = !!S.keys.nursery;
+    }
+  }
+  function showNote(k, note, solved) {
+    const G = GAPS[note]; if (!G) return;
+    const n = $('#nnote'); n.hidden = false;
+    const tag = k + ':' + note + ':' + solved;
+    if (shownNote === tag) return;
+    const fresh = shownNote === null || shownNote.split(':')[0] !== String(k);
+    shownNote = tag;
+    if (fresh) { n.style.animation = 'none'; void n.offsetWidth; n.style.animation = ''; }
+    $('#noteH').textContent = `The Collector's notes - Tom, age 7, 1987 - note ${note + 1} / 5`;
+    if (solved) {
+      $('#noteS').innerHTML = `${esc(G.pre)} <span class="gap-ok">${esc(G.ans)}</span> ${esc(G.post)}`;
+      const rule = $('#noteRule'); rule.hidden = false; rule.textContent = G.rule;
+    } else {
+      $('#noteS').innerHTML = `${esc(G.pre)} <span class="gap-slot">${shuffle(G.opts).map((o) => `<button>${esc(o)}</button>`).join('')}</span> ${esc(G.post)}`;
+      $('#noteRule').hidden = true;
+      if (fresh) n.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
   const offset = (e) => (e.pointerType === 'touch' ? 9 : 0);
   scene.addEventListener('pointermove', (e) => { const [x, y] = pct(e.clientX, e.clientY); torch = { x, y: y - offset(e) }; });
   scene.addEventListener('pointerdown', (e) => {
@@ -498,52 +572,41 @@ function initNursery() {
     const [x, y] = pct(e.clientX, e.clientY);
     torch = { x, y: y - offset(e) };
     if (scene.classList.contains('lit')) return;
+    const st = R.get(), got = st.got || {}, eyes = st.eyes || {};
+    const open = typeof st.open === 'number' ? st.open : -1;
     const k = NLETTERS.findIndex((l, i) => !got[i] && dist(x, y, l.x, l.y) < 7);
     if (k >= 0) {
-      if (open) { msg('Finish the note first!'); $('#nnote').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
-      openNote(k); return;
+      if (open >= 0 && !st.solved) { msg('Finish the note first!'); $('#nnote').scrollIntoView({ behavior: 'smooth', block: 'nearest' }); return; }
+      Snd.pop();
+      msg(`You found the letter ${NLETTERS[k].ch}! Read the note.`);
+      R.push({ open: k, note: Object.keys(got).length, solved: false });
+      return;
     }
-    const ey = NEYES.findIndex((ee, i) => !eyesSeen[i] && dist(x, y, ee.x, ee.y) < 6);
+    const ey = NEYES.findIndex((ee, i) => !eyes[i] && dist(x, y, ee.x, ee.y) < 6);
     if (ey >= 0) {
-      eyesSeen[ey] = true; msg(NEYES[ey].msg); Snd.whisper();
-      $(`.eye-pair[data-k="${ey}"]`).classList.add('gone');
+      msg(NEYES[ey].msg); Snd.whisper();
+      R.push({ ['eyes/' + ey]: true });
       act.fake('eyes', 'Got scared of something with eyes. It was not a monster.');
       return;
     }
     msg(pick(['Nothing here. Just dust.', 'Only shadows.', 'Brrr. It feels cold here.', 'Keep looking!', 'Was that a whisper? No. Nothing.']));
   });
-  function openNote(k) {
-    const G = GAPS[notes];
-    open = { k, G };
-    Snd.pop();
-    msg(`You found the letter ${NLETTERS[k].ch}! Read the note.`);
-    const n = $('#nnote'); n.hidden = false; n.style.animation = 'none'; void n.offsetWidth; n.style.animation = '';
-    $('#noteH').textContent = `The Collector's notes · Tom, age 7, 1987 · note ${notes + 1} / 5`;
-    $('#noteS').innerHTML = `${esc(G.pre)} <span class="gap-slot">${shuffle(G.opts).map((o) => `<button>${esc(o)}</button>`).join('')}</span> ${esc(G.post)}`;
-    $('#noteRule').hidden = true;
-    n.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
-  $('#noteS').addEventListener('click', async (e) => {
-    const b = e.target.closest('.gap-slot button'); if (!b || !open) return;
-    const { k, G } = open;
+  $('#noteS').addEventListener('click', (e) => {
+    const b = e.target.closest('.gap-slot button'); if (!b) return;
+    const st = R.get(), k = typeof st.open === 'number' ? st.open : -1;
+    if (k < 0 || st.solved) return;
+    const G = GAPS[st.note || 0];
     if (b.textContent !== G.ans) { b.classList.remove('bad'); void b.offsetWidth; b.classList.add('bad'); Snd.wrong(); return; }
-    $('#noteS').innerHTML = `${esc(G.pre)} <span class="gap-ok">${esc(G.ans)}</span> ${esc(G.post)}`;
-    const rule = $('#noteRule'); rule.hidden = false; rule.textContent = G.rule;
-    got[k] = true; notes++; open = null;
-    $(`.nl[data-k="${k}"]`).classList.add('got');
-    const slot = $$('#letters span')[k]; slot.textContent = NLETTERS[k].ch; slot.classList.add('on');
     Snd.chime(); act.courage(2, ...ptOf(e, b));
-    if (notes === NLETTERS.length) {
-      await sleep(900);
-      scene.classList.add('lit'); running = false;
-      msg('L, I, G, H, T. You found the light.');
-      $('#sayRow').hidden = false;
-    } else msg(`${NLETTERS.length - notes} more to find.`);
+    const left = NLETTERS.length - (Object.keys(st.got || {}).length + 1);
+    R.push({ ['got/' + k]: true, solved: true });
+    if (left > 0) msg(`${left} more to find.`);
   });
   $('#sayBtn').addEventListener('click', () => {
     Snd.unlock(); Snd.musicBox(); $('#sayRow').hidden = true;
     releaseJar('nursery', 'Key of Light', 'Things in the dark are only things.');
   });
+  paint({});
 }
 
 /* ================= 3 · THE KITCHEN ================= */
@@ -565,14 +628,24 @@ const POTION = ['#8fe0d0', '#9be22d', '#57c4b8', '#b9a8f0', '#e07a8f', '#ffb347'
 const SHAPES = ['round', 'tall', 'flask', 'square'];
 const BOT_COLS = ['#e07a8f', '#9be22d', '#57c4b8', '#f2b544', '#b9a8f0', '#ff8a5a'];
 function initKitchen() {
-  let order, i, locked;
-  const reset = () => {
-    order = shuffle(WORDS); i = 0; locked = false; S.stats.words = 0;
+  let order = null, shownStep = -1, flying = false;
+  const R = roomState('kitchen', paint);
+  const makeOrder = () => (Sync.live && Sync.code ? seededShuffle(WORDS, Sync.code) : shuffle(WORDS));
+  const stepOf = (st) => (st && typeof st.i === 'number' ? st.i : 0);
+  function paint(st) {
+    if (!order) order = makeOrder();
+    const i = stepOf(st);
+    S.stats.words = i;
+    $('#potionN').textContent = i;
+    $('#potionBar').style.width = (i / WORDS.length) * 100 + '%';
+    $('#cauldron').style.setProperty('--potion', POTION[i % POTION.length]);
+    if (i >= WORDS.length) {
+      $('#recipe').hidden = true; $('#potionDone').hidden = false; shownStep = i;
+      return;
+    }
     $('#recipe').hidden = false; $('#potionDone').hidden = true;
-    $('#cauldron').style.setProperty('--potion', POTION[0]);
-    step();
-  };
-  const step = () => {
+    if (shownStep === i) return;
+    shownStep = i;
     const W = order[i];
     $('#stepN').textContent = i + 1;
     $('#rdef').textContent = W.d;
@@ -580,12 +653,12 @@ function initKitchen() {
     const opts = shuffle([W, ...shuffle(WORDS.filter((x) => x !== W)).slice(0, 3)]);
     const cols = shuffle(BOT_COLS), shp = shuffle(SHAPES);
     $('#bottles').innerHTML = opts.map((o, k) => `<button class="bottle-btn" data-w="${esc(o.w)}"><div class="b-art">${ART.bottle(shp[k], cols[k])}</div><span class="b-lbl">${esc(o.w)}</span></button>`).join('');
-    $('#potionN').textContent = i; $('#potionBar').style.width = (i / WORDS.length) * 100 + '%';
-  };
+  }
   $('#bottles').addEventListener('click', async (e) => {
-    const b = e.target.closest('.bottle-btn'); if (!b || locked) return;
+    const b = e.target.closest('.bottle-btn'); if (!b || flying) return;
     Snd.unlock();
-    const W = order[i];
+    const i = stepOf(R.get()), W = order[i];
+    if (!W || b.classList.contains('gone')) return;
     if (b.dataset.w !== W.w) {
       b.classList.add('nope'); setTimeout(() => b.classList.add('tried'), 450);
       Snd.burp(); const bp = $('#burp'); bp.hidden = false; bp.style.animation = 'none'; void bp.offsetWidth; bp.style.animation = '';
@@ -594,7 +667,7 @@ function initKitchen() {
       act.fake('burp', 'The potion did not like that ingredient.');
       return;
     }
-    locked = true;
+    flying = true;
     $('#rex').innerHTML = esc(W.ex).replace('___', `<span class="filled">${esc(W.w)}</span>`);
     const from = $('.b-art', b).getBoundingClientRect(), to = $('#cauldron').getBoundingClientRect();
     const fl = document.createElement('div'); fl.className = 'flyer'; fl.innerHTML = $('.b-art', b).innerHTML;
@@ -610,16 +683,13 @@ function initKitchen() {
     const c = $('#cauldron'); c.classList.remove('splash'); void c.offsetWidth; c.classList.add('splash');
     Snd.bubble();
     const cr = c.getBoundingClientRect(); act.courage(2, cr.left + cr.width / 2, cr.top + 40);
-    i++; S.stats.words = i;
-    c.style.setProperty('--potion', POTION[i % POTION.length]);
-    $('#potionN').textContent = i; $('#potionBar').style.width = (i / WORDS.length) * 100 + '%';
-    await sleep(900);
-    if (i >= WORDS.length) {
-      $('#recipe').hidden = true; $('#potionDone').hidden = false; $('#spellbook').open = true;
+    await sleep(700);
+    flying = false;
+    R.push({ i: i + 1 });
+    if (i + 1 >= WORDS.length) {
+      $('#spellbook').open = true;
       releaseJar('kitchen', 'Key of Courage', 'Twelve brave words in one pot.');
-      return;
     }
-    locked = false; step();
   });
   $('#drinkBtn').addEventListener('click', () => {
     Snd.unlock(); Snd.bubble(); Snd.chime();
@@ -627,9 +697,9 @@ function initKitchen() {
     setTimeout(() => document.body.classList.remove('brave'), 2500);
     act.fake('potion', 'Drank something glowing. Feeling... braver?');
   });
-  $('#potionAgain').addEventListener('click', reset);
+  $('#potionAgain').addEventListener('click', () => { shownStep = -1; R.push({ i: 0 }); });
   $('#wordList').innerHTML = WORDS.map((W) => `<div class="word"><b>${esc(W.w)}</b>${esc(W.d)}<i>${esc(W.ex.replace('___', W.w))}</i></div>`).join('');
-  reset();
+  paint({});
 }
 
 /* ================= 4 · THE LIBRARY ================= */
@@ -640,20 +710,40 @@ const BQ = [
 ];
 const CODE = '472';
 function initLibrary() {
+  const R = roomState('library', paint);
+  $('#bqList').innerHTML = BQ.map((q, i) => `<div class="bq-row" data-i="${i}"><p>${i + 1}. ${esc(q.q)}</p><div class="bq-opts">${shuffle(q.opts).map((o) => `<button class="btn" data-d="${o[1] ?? ''}">${esc(o[0])}</button>`).join('')}</div></div>`).join('');
+  function paint(st) {
+    st = st || {};
+    if (st.open) {
+      $('#book').hidden = false; $('#lockZone').hidden = false;
+      $('#openBook').hidden = true; $('#shelfHint').hidden = true;
+    }
+    const ans = st.ans || {};
+    Object.keys(ans).forEach((i) => {
+      const row = $(`.bq-row[data-i="${i}"]`); if (!row || row.dataset.done) return;
+      row.dataset.done = '1';
+      const b = $$('.bq-opts .btn', row).find((x) => x.dataset.d === String(ans[i]));
+      if (b) b.classList.add('right');
+      $$('.bq-opts .btn', row).forEach((x) => { if (x !== b) x.disabled = true; });
+      $('p', row).insertAdjacentHTML('beforeend', `<span class="digit">${esc(String(ans[i]))}</span>`);
+    });
+    if (st.code) {
+      const combo = $('#combo');
+      if (!combo.classList.contains('ok')) { combo.classList.add('ok'); $('#codeMsg').textContent = 'Click. The lock opens.'; }
+    }
+  }
   $('#openBook').addEventListener('click', () => {
     Snd.unlock(); Snd.page();
-    $('#book').hidden = false; $('#lockZone').hidden = false; $('#openBook').hidden = true; $('#shelfHint').hidden = true;
+    R.push({ open: true });
     $('#book').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
-  $('#bqList').innerHTML = BQ.map((q, i) => `<div class="bq-row" data-i="${i}"><p>${i + 1}. ${esc(q.q)}</p><div class="bq-opts">${shuffle(q.opts).map((o) => `<button class="btn" data-d="${o[1] ?? ''}">${esc(o[0])}</button>`).join('')}</div></div>`).join('');
   $('#bqList').addEventListener('click', (e) => {
     const b = e.target.closest('.bq-opts .btn'); if (!b) return;
     const row = b.closest('.bq-row'); if (row.dataset.done) return;
     Snd.unlock();
     if (!b.dataset.d) { b.classList.add('wrong'); b.disabled = true; Snd.wrong(); return; }
-    row.dataset.done = '1'; b.classList.add('right');
-    $('p', row).insertAdjacentHTML('beforeend', `<span class="digit">${b.dataset.d}</span>`);
     Snd.chime(); act.courage(2, ...ptOf(e, b));
+    R.push({ ['ans/' + row.dataset.i]: b.dataset.d });
   });
   const wheels = $$('#combo .wheel'), val = [0, 0, 0];
   wheels.forEach((w, k) => {
@@ -665,7 +755,8 @@ function initLibrary() {
     const code = val.join(''), combo = $('#combo'), msg = $('#codeMsg');
     if (S.keys.library) return;
     if (code === CODE) {
-      combo.classList.add('ok'); msg.textContent = 'Click. The lock opens.'; Snd.lock();
+      msg.textContent = 'Click. The lock opens.'; Snd.lock();
+      R.push({ code: true });
       releaseJar('library', 'Key of the Last Page', 'Clara would be proud of you.');
       return;
     }
@@ -674,6 +765,7 @@ function initLibrary() {
     if (code === '000') act.fake('lock000', 'Tried 0-0-0. Bold strategy.');
     else act.fake('lockwrong', 'The lock is not impressed.');
   });
+  paint({});
 }
 
 /* ================= 5 · THE HALL OF MIRRORS ================= */
@@ -690,7 +782,22 @@ function initMirrors() {
         <div class="m-form"><textarea rows="3" maxlength="200" placeholder="Talk back..."></textarea>
           <div class="m-btns"><button class="btn small btn-gold m-go">Talk back</button><button class="m-idea">Need an idea?</button></div>
           <p class="m-sample" hidden>${esc(m.idea)}</p></div></div></div>`).join('');
-  let broken = 0;
+  const R = roomState('mirrors', paint);
+  function paint(st) {
+    st = st || {};
+    let broken = 0;
+    MIRRORS.forEach((m, i) => {
+      const e = st[i]; if (!e) return;
+      broken++;
+      const card = $(`.mirror-card[data-i="${i}"]`);
+      if (!card || card.classList.contains('broken')) return;
+      card.classList.add('broken');
+      const form = $('.m-form', card);
+      const by = e.name ? `<span class="m-by">${artHTML('av_' + (e.avatar || 'mummy'))}${esc(e.name)}</span>` : '';
+      if (form) form.outerHTML = `<p class="m-reply">${esc(e.text)}${by}</p>`;
+    });
+    S.stats.mirrors = broken;
+  }
   $('#mirrorGrid').addEventListener('click', (e) => {
     const card = e.target.closest('.mirror-card'); if (!card) return;
     Snd.unlock();
@@ -698,12 +805,15 @@ function initMirrors() {
     if (!e.target.closest('.m-go')) return;
     const ta = $('textarea', card), t = ta.value.trim();
     if (t.split(/\s+/).filter(Boolean).length < 3) { ta.classList.remove('bad'); void ta.offsetWidth; ta.classList.add('bad'); Snd.wrong(); ta.placeholder = 'Write at least a few words...'; return; }
-    card.classList.add('broken'); Snd.glass();
-    $('.m-form', card).outerHTML = `<p class="m-reply">${esc(t)}</p>`;
-    broken++; S.stats.mirrors = broken;
+    const m = me();
+    Snd.glass();
     act.courage(3, ...ptOf(e, card));
-    if (broken === MIRRORS.length) setTimeout(() => releaseJar('mirrors', 'Key of Mirrors', 'You talked back to your inner critic. Four times.'), 900);
+    const i = card.dataset.i;
+    const was = Object.keys(R.get() || {}).filter((k) => /^\d+$/.test(k)).length;
+    R.push({ [i]: { text: t, name: m.name, avatar: m.avatar, by: m.id } });
+    if (was + 1 === MIRRORS.length) setTimeout(() => releaseJar('mirrors', 'Key of Mirrors', 'You talked back to your inner critic. Four times.'), 900);
   });
+  paint({});
 }
 
 /* ================= 6 · THE CANDLE ROOM · THE FIVE CANDLES (team puzzle) ================= */
@@ -738,20 +848,21 @@ const candleHTML = (id) => {
 };
 function initCandles() {
   const altar = $('#altar'), row = $('#altarCandles'), msg = $('#fcMsg');
-  let order = [], busy = false, solved = false, tries = 0, hint = 0;
+  let busy = false, hint = 0, tries = 0, lastShown = '';
+  const R = roomState('candles', paint);
   $('#envs').innerHTML = FC_CLUES.map((_, i) => `<button class="env" data-i="${i}" aria-label="Clue ${i + 1}">${ENV_SVG(i + 1)}<b>Clue ${i + 1}</b></button>`).join('');
   $('#envs').addEventListener('click', (e) => {
     const b = e.target.closest('.env'); if (!b) return;
     Snd.unlock(); Snd.page();
     const i = +b.dataset.i, mine = Sync.live ? Sync.myClue() : -1;
     if (mine >= 0 && i !== mine) {
-      $('#fcMsg').className = 'fc-msg bad';
-      $('#fcMsg').textContent = `That envelope belongs to someone else. Yours is Clue ${mine + 1}.`;
+      msg.className = 'fc-msg bad';
+      msg.textContent = `That envelope belongs to someone else. Yours is Clue ${mine + 1}.`;
       Snd.wrong(); return;
     }
     $$('.env').forEach((x) => x.classList.toggle('sel', x === b)); b.classList.add('open');
     const box = $('#clueOpen'); box.hidden = false; box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
-    box.innerHTML = `<small>Clue ${i + 1} · read it to your team</small><p>${esc(FC_CLUES[i])}</p><button id="clueHide">Hide my clue</button>`;
+    box.innerHTML = `<small>Clue ${i + 1} - read it to your team</small><p>${esc(FC_CLUES[i])}</p><button id="clueHide">Hide my clue</button>`;
     if ($$('.env.open').length === 1) act.fake('clue', 'Opened a secret envelope. Felt like a spy.');
   });
   $('#clueOpen').addEventListener('click', (e) => {
@@ -759,39 +870,68 @@ function initCandles() {
     $('#clueOpen').hidden = true; $$('.env').forEach((x) => x.classList.remove('sel'));
   });
   row.innerHTML = FC_CANDLES.map((c) => `<button class="ac" data-id="${c.id}" aria-label="${c.id} candle">${candleHTML(c.id)}<span class="ac-n"></span><span class="ac-l">${c.id}</span></button>`).join('');
-  const setLight = () => altar.style.setProperty('--a', order.length / 5);
-  const blowOut = (smoke) => {
-    $$('.ac', row).forEach((b) => { b.classList.remove('lit', 'gust'); if (smoke) { b.classList.remove('smoke'); void b.offsetWidth; b.classList.add('smoke'); } });
-    order = []; setLight();
-  };
-  row.addEventListener('click', async (e) => {
-    const b = e.target.closest('.ac'); if (!b || busy || solved || b.classList.contains('lit')) return;
-    Snd.unlock(); Snd.whoosh();
-    order.push(b.dataset.id); b.classList.add('lit'); $('.ac-n', b).textContent = order.length; setLight();
-    msg.className = 'fc-msg'; msg.textContent = order.length < 5 ? `${5 - order.length} more...` : '';
-    if (order.length < 5) return;
-    busy = true;
-    await sleep(700);
-    if (order.join() === FC_SOLUTION.join()) {
-      solved = true; altar.classList.add('won');
+
+  const orderOf = (st) => (st && Array.isArray(st.order) ? st.order : []);
+  function paint(st) {
+    st = st || {};
+    const order = orderOf(st), solved = !!st.solved;
+    const tag = order.join() + '|' + solved;
+    if (tag === lastShown) return;
+    const wasFull = lastShown.split('|')[0].split(',').filter(Boolean).length === 5;
+    lastShown = tag;
+    $$('.ac', row).forEach((b) => {
+      const k = order.indexOf(b.dataset.id);
+      b.classList.toggle('lit', k >= 0);
+      b.classList.remove('gust');
+      $('.ac-n', b).textContent = k >= 0 ? k + 1 : '';
+      if (!order.length && wasFull) { b.classList.remove('smoke'); void b.offsetWidth; b.classList.add('smoke'); }
+    });
+    altar.style.setProperty('--a', order.length / 5);
+    if (solved) {
+      altar.classList.add('won');
       $$('.ac', row).forEach((x) => x.classList.add('win'));
       msg.className = 'fc-msg good'; msg.textContent = 'All five flames burn high. The wax melts... and inside it, there is a key!';
-      Snd.chime(); Snd.tada();
       $('#candles').style.setProperty('--lit', 1);
-      setTimeout(() => releaseJar('candles', 'Key of Fire', 'Five candles, one team. Nobody did it alone.'), 900);
       return;
     }
+    if (order.length === 5) {
+      altar.classList.remove('wind'); void altar.offsetWidth; altar.classList.add('wind');
+      Snd.whisper();
+      $$('.ac', row).forEach((x) => x.classList.add('gust'));
+      msg.className = 'fc-msg bad'; msg.textContent = 'A cold wind blows all the candles out. Wrong order. Check your clues again!';
+      return;
+    }
+    if (!order.length && wasFull) return;
+    msg.className = 'fc-msg';
+    msg.textContent = order.length ? `${5 - order.length} more...` : 'Tap the candles in the order you think is right.';
+  }
+  row.addEventListener('click', async (e) => {
+    const b = e.target.closest('.ac'); if (!b || busy) return;
+    const st = R.get(), order = orderOf(st);
+    if (st.solved || order.length >= 5 || order.indexOf(b.dataset.id) >= 0) return;
+    Snd.unlock(); Snd.whoosh();
+    const next = order.concat(b.dataset.id);
+    R.push({ order: next });
+    if (next.length < 5) return;
+    busy = true;
+    await sleep(700);
+    if (next.join() === FC_SOLUTION.join()) {
+      R.push({ solved: true });
+      Snd.chime(); Snd.tada();
+      setTimeout(() => releaseJar('candles', 'Key of Fire', 'Five candles, one team. Nobody did it alone.'), 900);
+      busy = false; return;
+    }
     tries++;
-    altar.classList.remove('wind'); void altar.offsetWidth; altar.classList.add('wind');
-    Snd.whisper();
-    $$('.ac', row).forEach((x) => x.classList.add('gust'));
     await sleep(900);
-    blowOut(true);
-    msg.className = 'fc-msg bad'; msg.textContent = 'A cold wind blows all the candles out. Wrong order. Check your clues again!';
+    R.push({ order: [] });
     if (tries === 3) act.fake('tries', 'Tried three orders. That is called science.');
     busy = false;
   });
-  $('#fcReset').addEventListener('click', () => { if (busy || solved) return; Snd.whisper(); blowOut(true); msg.className = 'fc-msg'; msg.textContent = 'Tap the candles in the order you think is right.'; });
+  $('#fcReset').addEventListener('click', () => {
+    const st = R.get();
+    if (busy || st.solved) return;
+    Snd.whisper(); R.push({ order: [] });
+  });
   $('#fcHint').addEventListener('click', () => {
     Snd.unlock(); Snd.whisper();
     const t = $('#fcHintText'); t.hidden = false;
@@ -800,6 +940,7 @@ function initCandles() {
     if (hint >= FC_HINTS.length) $('#fcHint').disabled = true;
     if (hint === 2) act.fake('hint', 'Asked a villain for help. Bold.');
   });
+  paint({});
 }
 
 /* ================= OPTIONAL · THE CLOCK ROOM ================= */
@@ -818,30 +959,47 @@ const CLOCK_Q = [
   'What are you looking forward to this year?',
 ];
 function initClock() {
-  let used = new Set(), angle = 0, spinning = false, spins = 0;
+  let angle = 0, spinning = false, spins = 0, shown = '';
   const hand = () => $('#bigClock .clock-hand');
-  $('#spinBtn').addEventListener('click', async () => {
-    if (spinning || !hand()) return;
-    Snd.unlock();
-    if (used.size >= 12) used = new Set();
-    const free = [...Array(12).keys()].map((x) => x + 1).filter((x) => !used.has(x));
-    const n = pick(free); used.add(n);
+  const R = roomState('clock', paint);
+  async function paint(st) {
+    st = st || {};
+    const used = st.used || {};
+    $$('#bigClock .cnum').forEach((c) => c.classList.toggle('used', !!used[c.dataset.n]));
+    const tag = String(st.t || '');
+    if (!st.n || tag === shown) { if (!st.n) { $('#clockQ').hidden = true; $$('#bigClock .cnum').forEach((c) => c.classList.remove('now')); } return; }
+    shown = tag;
+    const n = st.n;
     spinning = true; $('#spinBtn').disabled = true;
     const target = n * 30;
     angle = angle - (angle % 360) + 720 + target + (target <= angle % 360 ? 360 : 0);
-    hand().style.transform = `rotate(${angle}deg)`;
+    if (hand()) hand().style.transform = `rotate(${angle}deg)`;
     let t = 0; const iv = setInterval(() => { Snd.tick(); t++; if (t > 26) clearInterval(iv); }, 110);
     $$('#bigClock .cnum').forEach((c) => c.classList.remove('now'));
     await sleep(3300);
     clearInterval(iv); Snd.dong();
-    const num = $(`#bigClock .cnum[data-n="${n}"]`); num?.classList.add('now', 'used');
+    const num = $(`#bigClock .cnum[data-n="${n}"]`); if (num) num.classList.add('now', 'used');
     $('#clockQ').hidden = false; $('#cqN').textContent = n; $('#cqText').textContent = CLOCK_Q[n - 1];
-    spinning = false; $('#spinBtn').disabled = false; spins++;
+    spinning = false; $('#spinBtn').disabled = false;
+  }
+  $('#spinBtn').addEventListener('click', () => {
+    if (spinning || !hand()) return;
+    Snd.unlock();
+    const st = R.get();
+    let used = st.used || {};
+    if (Object.keys(used).length >= 12) { R.push({ used: {} }); used = {}; }
+    const free = [...Array(12).keys()].map((x) => x + 1).filter((x) => !used[x]);
+    const n = pick(free);
+    spins++;
+    R.push({ n, t: Date.now(), ['used/' + n]: true });
     if (spins === 3) act.fake('spin', "Spun time three times. Time didn't notice.");
     if (spins === 1) act.complete('clock');
   });
   $('#clockReset').addEventListener('click', () => {
-    used = new Set(); $$('#bigClock .cnum').forEach((c) => c.classList.remove('used', 'now')); $('#clockQ').hidden = true; Snd.pop();
+    shown = ''; Snd.pop();
+    $$('#bigClock .cnum').forEach((c) => c.classList.remove('used', 'now'));
+    $('#clockQ').hidden = true;
+    R.push({ used: {}, n: 0, t: 0 });
   });
 }
 
@@ -971,11 +1129,18 @@ function initTopbar() {
   $$('.room').forEach((r) => here.observe(r));
 }
 
-/* ================= START ================= */
-paintArt();
-initTopbar(); initGate(); initHall(); initNursery(); initKitchen(); initLibrary(); initMirrors(); initCandles(); initClock(); initDoor();
-renderMe(); renderCourage(); renderRooms(); renderKeys(); renderFears(); renderPass();
-
+/* rooms register here: when the room's shared state changes, their paint runs */
+const SHARED = {};
+const onShared = (key, fn) => { SHARED[key] = fn; };
+/* a shuffle everyone in the same room gets identically (seeded by the room code) */
+function seededShuffle(arr, seed) {
+  let h = 2166136261;
+  for (let i = 0; i < seed.length; i++) { h ^= seed.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const rnd = () => { h += 0x6D2B79F5; let t = h; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  const a = arr.slice();
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
 /* ================= GROUP MODE (Firebase) =================
    Everything below only wakes up when FIREBASE_CONFIG at the top of the file
    is filled in. Without it the lesson stays exactly as it is: local only. */
@@ -1001,6 +1166,8 @@ const Sync = (() => {
     if (keys) { renderKeys(); renderLocks(); }
     const fears = Object.keys(d.fears || {}).sort().map((k) => d.fears[k]);
     if (fears.length !== S.fears.length) { S.fears = fears; renderFears(); }
+    const g = d.game || {};
+    Object.keys(SHARED).forEach((k) => { try { SHARED[k](g[k] || {}); } catch (e) { /* one room must not break the rest */ } });
     renderMates();
   };
   const api = {
@@ -1108,4 +1275,9 @@ function initRoom() {
   input.addEventListener('keydown', (e) => { if (e.key === 'Enter') go(); });
   if (saved) go();
 }
+
+/* ================= START ================= */
+paintArt();
+initTopbar(); initGate(); initHall(); initNursery(); initKitchen(); initLibrary(); initMirrors(); initCandles(); initClock(); initDoor();
+renderMe(); renderCourage(); renderRooms(); renderKeys(); renderFears(); renderPass();
 initRoom();
