@@ -1,0 +1,400 @@
+<!-- ================= TOP BAR ================= -->
+<header id="topbar">
+  <a class="brand" href="#gate" aria-label="Back to the start"><span class="brand-ic" data-art="moth"></span><b>The Fear Collector</b></a>
+  <nav class="tb-rooms" aria-label="Rooms">
+    <button class="tbw" data-go="hall" title="1 · The Hall">1</button>
+    <button class="tbw" data-go="nursery" title="2 · The Nursery">2</button>
+    <button class="tbw" data-go="kitchen" title="3 · The Kitchen">3</button>
+    <button class="tbw" data-go="library" title="4 · The Library">4</button>
+    <button class="tbw" data-go="mirrors" title="5 · The Hall of Mirrors">5</button>
+    <button class="tbw" data-go="candles" title="6 · The Candle Room">6</button>
+    <button class="tbw" data-go="door" title="7 · The Front Door">7</button>
+  </nav>
+  <div class="keyring" id="keyring" title="Your keys">
+    <span class="kslot" data-k="nursery"></span><span class="kslot" data-k="kitchen"></span><span class="kslot" data-k="library"></span><span class="kslot" data-k="mirrors"></span><span class="kslot" data-k="candles"></span>
+  </div>
+  <div class="tb-courage" title="Courage"><span class="flame-ic"></span><b id="courageN">0</b></div>
+  <div class="tb-me" id="tbMe"><span class="tb-me-av" id="tbMeAv"></span><span id="tbMeName">Guest</span></div>
+  <button class="tb-btn" id="muteBtn" aria-label="Sound on or off" title="Sound">
+    <svg viewBox="0 0 24 24" class="ic-on"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16 8.5c1.2 1 1.8 2.2 1.8 3.5s-.6 2.5-1.8 3.5M18.5 6c2 1.6 3 3.6 3 6s-1 4.4-3 6" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24" class="ic-off"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 9.5l5 5m0-5l-5 5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+  </button>
+</header>
+
+<main>
+<!-- ================= THE GATE ================= -->
+<section id="gate" class="room r-gate" data-room="gate">
+  <div class="stars" aria-hidden="true"></div>
+  <div class="fog" aria-hidden="true"><i></i><i></i></div>
+  <div class="bats" aria-hidden="true"><span class="fly-bat b1" data-art="bat"></span><span class="fly-bat b2" data-art="bat"></span><span class="fly-bat b3" data-art="bat"></span></div>
+  <div class="wrap gate-grid">
+    <div class="gate-text">
+      <p class="kicker">A speaking club for the brave (and the slightly nervous) · B1</p>
+      <h1>The Fear<br>Collector</h1>
+      <p class="lead">An abandoned mansion. A front door with five locks. Five keys, each one guarded by a fear. Find them all and get out before you become part of the collection.</p>
+      <button class="btn big btn-gold" id="toJoin">Come closer</button>
+    </div>
+    <div class="gate-art">
+      <div class="mansion" id="mansion" data-art="mansion"></div>
+      <button class="moon-btn" id="moonBtn" aria-label="The moon"></button>
+    </div>
+  </div>
+
+  <div class="wrap">
+    <div class="join card" id="join">
+      <h3>Who are you in the dark?</h3>
+      <p class="join-sub">Choose your shadow and write your name.</p>
+      <div class="room-row" id="roomRow" hidden>
+        <label class="name-label">Room code
+          <input id="roomIn" maxlength="14" autocomplete="off" placeholder="e.g. halloween">
+        </label>
+        <button class="btn btn-ghost" id="roomBtn">Join the room</button>
+        <p class="room-msg" id="roomMsg">Everyone in your club types the same code and plays together.</p>
+      </div>
+      <div class="avatars" id="avatars"></div>
+      <label class="name-label">Your name
+        <input id="nameIn" maxlength="16" autocomplete="off" placeholder="e.g. Natalia">
+      </label>
+      <p class="join-err" id="joinErr" hidden>Choose a shadow and write your name first.</p>
+      <button class="btn big btn-gold" id="enterBtn">Step inside</button>
+    </div>
+
+    <details class="plan card">
+      <summary>Tonight's plan · for the host</summary>
+      <ol class="plan-list">
+        <li><b>The Gate</b> · shadows and names, waking up in the mansion <span>~4 min</span></li>
+        <li><b>1 · The Hall</b> · Brave or Nope? quick decisions against the clock <span>~6 min</span></li>
+        <li><b>2 · The Nursery</b> · fear of the dark: torch search, <i>used to</i> <span>~10 min</span></li>
+        <li><b>3 · The Kitchen</b> · fear of the unknown: potion of courage, 12 B1 words <span>~10 min</span></li>
+        <li><b>4 · The Library</b> · fear of failure: an unfinished book, a code lock <span>~10 min</span></li>
+        <li><b>5 · The Hall of Mirrors</b> · fear of what others think: talk back to the mirrors <span>~8 min</span></li>
+        <li><b>6 · The Candle Room</b> · fear of being alone: a team logic puzzle with split clues <span>~10 min</span></li>
+        <li class="opt"><b>Optional extra · The Clock Room</b> · fear of change: spin the clock <span>~5 min</span></li>
+        <li><b>7 · The Front Door</b> · five keys, the twist, leave a fear behind, dawn <span>~6 min</span></li>
+      </ol>
+    </details>
+    <div class="mates" id="mates" hidden></div>
+  </div>
+  <div class="edge" data-edge="forest" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 1 · THE HALL ================= -->
+<section id="hall" class="room r-hall" data-room="hall">
+  <div class="glow-spot" aria-hidden="true"></div>
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>1</span></div>
+      <div><p class="rtag"><span>Warm-up</span><span>~6 min</span></p><h2>The Hall</h2></div>
+    </header>
+    <div class="room-top hall-top">
+    <div class="cnote"><p>Welcome to my collection. The front door has five locks. The five keys are hidden in my house, and each one is guarded by a fear. My favourite fears. You may leave... if you can.</p><b>C.</b></div>
+    <div class="hall-sign" data-art="sign" role="img" aria-label="Are you afraid of the dark?"></div>
+    </div>
+
+    <div class="hall-grid">
+      <figure class="door-wrap">
+        <div class="hall-door" data-art="door"></div>
+        <figcaption>Five locks. Five keys. Somewhere in this house.</figcaption>
+      </figure>
+      <div class="bon card" id="bon">
+        <p class="card-title">Brave or Nope?</p>
+        <p class="bon-intro">Quick! You have 10 seconds. Would you do it? Then tell the group why in one sentence.</p>
+        <div class="bon-stage" id="bonStage">
+          <div class="bon-timer" id="bonTimer"><b id="bonSec">10</b></div>
+          <p class="bon-n">Situation <b id="bonN">1</b> / 6</p>
+          <p class="bon-q" id="bonQ"></p>
+          <div class="bon-btns" id="bonBtns">
+            <button class="btn big btn-gold" data-v="brave">I'd do it</button>
+            <button class="btn big btn-ghost" data-v="nope">No way!</button>
+          </div>
+          <div class="bon-why" id="bonWhy" hidden>
+            <p class="bon-say" id="bonSay"></p>
+            <button class="btn btn-gold" id="bonNext">Next situation</button>
+          </div>
+        </div>
+        <div class="bon-start" id="bonStart"><button class="btn big btn-gold" id="bonGo">Start</button></div>
+        <div class="bon-result" id="bonResult" hidden></div>
+      </div>
+    </div>
+  </div>
+  <div class="edge" data-edge="hall" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 2 · THE NURSERY ================= -->
+<section id="nursery" class="room r-nursery" data-room="nursery">
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>2</span></div>
+      <div><p class="rtag"><span>Fear of the dark</span><span>Grammar · used to</span><span>~10 min</span></p><h2>The Nursery</h2></div>
+    </header>
+    <div class="room-top">
+      <div class="cnote"><p>Children are afraid of the dark. Adults are afraid of what they imagine in it. I collect both.</p><b>C.</b></div>
+      <div class="jar-box" id="jar-nursery"><div class="jar" data-jar="nursery"></div><p class="jar-state">Locked in the jar: <b>the dark</b></p></div>
+    </div>
+
+    <div class="spot-row">
+    <div class="spot card">
+      <p class="card-title">Grammar spotlight · used to</p>
+      <div class="spot-grid">
+        <div>
+          <p><span class="g-hl">used to</span> + verb = something that was true or happened often in the past, but not now.<br><i>I used to sleep with the light on. (Now I don't.)</i></p>
+          <p><b>Negative:</b> I <span class="g-hl">didn't use to</span> like the dark. <span class="g-note">no <b>-d</b> after <b>didn't</b></span></p>
+          <p><b>Question:</b> <span class="g-hl">Did</span> you <span class="g-hl">use to</span> have nightmares?</p>
+        </div>
+        <div>
+          <p><b>Bonus:</b> <span class="g-hl2">be afraid of</span> + noun / -ing<br><i>I'm afraid of spiders.<br>She's afraid of being alone.</i></p>
+        </div>
+      </div>
+    </div>
+    <div class="spot-ghost" data-art="ghostHearts" aria-hidden="true"></div>
+    </div>
+
+    <div class="torch-game card">
+      <p class="card-title">Find the light</p>
+      <p>The nursery is dark. Somewhere in this room, a child stuck five <b>glow-in-the-dark letters</b>. Move your torch and tap a letter when you find it. Each letter hides one of the Collector's notes about Tom. Careful: something in here is watching you.</p>
+      <div class="nscene" id="nscene">
+        <div class="nscene-art" data-art="nurseryRoom"></div>
+        <div class="nletters" id="nletters"></div>
+        <canvas id="ntorch" aria-hidden="true"></canvas>
+        <div class="neyes" id="neyes"></div>
+        <p class="nmsg" id="nmsg">Move your torch around the room.</p>
+      </div>
+      <div class="note card" id="nnote" hidden>
+        <p class="note-h" id="noteH">The Collector's notes · Tom, age 7, 1987</p>
+        <p class="note-s" id="noteS"></p>
+        <p class="note-rule" id="noteRule" hidden></p>
+      </div>
+      <div class="letters" id="letters"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="btn-row center" id="sayRow" hidden><button class="btn big btn-gold" id="sayBtn">Say the word to the jar</button></div>
+    </div>
+  </div>
+  <div class="edge" data-edge="nursery" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 3 · THE KITCHEN ================= -->
+<section id="kitchen" class="room r-kitchen" data-room="kitchen">
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>3</span></div>
+      <div><p class="rtag"><span>Fear of the unknown</span><span>Vocabulary</span><span>~10 min</span></p><h2>The Kitchen</h2></div>
+    </header>
+    <div class="room-top">
+      <div class="cnote"><p>The fear of the unknown tastes like an ingredient you can't name. Cook something brave, and I'll give you the key.</p><b>C.</b></div>
+      <div class="jar-box" id="jar-kitchen"><div class="jar" data-jar="kitchen"></div><p class="jar-state">Locked in the jar: <b>the unknown</b></p></div>
+    </div>
+
+    <div class="kitchen-grid">
+      <div class="cauldron-zone">
+        <div class="cauldron" id="cauldron" data-art="cauldron"></div>
+        <div class="burp" id="burp" hidden>Blergh!</div>
+        <div class="meter"><div class="bar"><i id="potionBar"></i></div><span><b id="potionN">0</b> / 12 ingredients</span></div>
+      </div>
+      <div class="recipe card" id="recipe">
+        <p class="r-label">Potion of Courage · ingredient <b id="stepN">1</b></p>
+        <p class="r-def" id="rdef"></p>
+        <p class="r-ex" id="rex"></p>
+        <div class="bottles" id="bottles"></div>
+      </div>
+    </div>
+
+    <div class="potion-done card" id="potionDone" hidden>
+      <p class="pd-title">The Potion of Courage is ready</p>
+      <p>It glows. It smells like rain, burnt sugar and old books. One sip, and the unknown feels a little smaller.</p>
+      <div class="btn-row center"><button class="btn big btn-gold" id="drinkBtn">Drink it</button><button class="btn btn-ghost" id="potionAgain">Play again</button></div>
+    </div>
+
+    <details class="spellbook card" id="spellbook">
+      <summary>Recipe book · all 12 words</summary>
+      <div class="words" id="wordList"></div>
+    </details>
+
+  </div>
+  <div class="edge" data-edge="kitchen" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 4 · THE LIBRARY ================= -->
+<section id="library" class="room r-library" data-room="library">
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>4</span></div>
+      <div><p class="rtag"><span>Fear of failure</span><span>Reading</span><span>~10 min</span></p><h2>The Library</h2></div>
+    </header>
+    <div class="room-top">
+      <div class="cnote"><p>Every book in this library is unfinished. That's why they are my favourites.</p><b>C.</b></div>
+      <div class="jar-box" id="jar-library"><div class="jar" data-jar="library"></div><p class="jar-state">Locked in the jar: <b>failure</b></p></div>
+    </div>
+
+    <div class="lib-grid">
+      <div class="lib-side">
+        <div class="shelf-wrap">
+          <div class="shelf" data-art="bookcase"></div>
+          <button class="glow-book" id="openBook" aria-label="Open the glowing book"><i></i></button>
+          <div class="shelf-ghost" data-art="ghostHat" aria-hidden="true"></div>
+        </div>
+        <p class="shelf-hint" id="shelfHint">One book on the shelf is glowing. Tap it to open it.</p>
+      </div>
+      <article class="book" id="book" hidden>
+        <p class="bk-title">The Lighthouse Keeper</p>
+        <p class="bk-by">a novel by Clara Moss · unfinished</p>
+        <p>You take the glowing book from the shelf. It's handwritten. The story is about a lonely lighthouse keeper, and it's funny and sad at the same time. It's good. Really good. But on page 99, it stops in the middle of a sentence.</p>
+        <p>Between the pages there's a letter. "Dear me," Clara writes. "I have to stop. What if the book is bad? What if people laugh at me? What if I spend years on it and it's all for nothing? I'll put it on the shelf. Just for now."</p>
+        <p>The letter is from March 1984. Clara never came back to the book.</p>
+        <p>At the back, there's another note in old, shaky handwriting: "I'm eighty now. I wasn't really afraid of failing. I was afraid of trying and finding out. Since 1984 I've failed at many things, and I survived all of them. The only thing I really regret is page 100."</p>
+        <p class="bk-c">Under it, in different ink: <i>"Thank you, Clara. Another one for my collection. C."</i></p>
+      </article>
+    </div>
+
+    <div class="lock-zone card" id="lockZone" hidden>
+      <p class="card-title">The jar has a code lock</p>
+      <p>Answer the questions. Every right answer shows you one number of the code.</p>
+      <div id="bqList"></div>
+      <div class="combo" id="combo">
+        <div class="wheel" data-w="0"><button class="up" aria-label="Up">▲</button><b>0</b><button class="dn" aria-label="Down">▼</button></div>
+        <div class="wheel" data-w="1"><button class="up" aria-label="Up">▲</button><b>0</b><button class="dn" aria-label="Down">▼</button></div>
+        <div class="wheel" data-w="2"><button class="up" aria-label="Up">▲</button><b>0</b><button class="dn" aria-label="Down">▼</button></div>
+        <button class="btn btn-gold" id="tryCode">Open</button>
+      </div>
+      <p class="code-msg" id="codeMsg"></p>
+    </div>
+
+  </div>
+  <div class="edge" data-edge="library" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 5 · THE HALL OF MIRRORS ================= -->
+<section id="mirrors" class="room r-mirrors" data-room="mirrors">
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>5</span></div>
+      <div><p class="rtag"><span>Fear of what others think</span><span>Speaking</span><span>~9 min</span></p><h2>The Hall of Mirrors</h2></div>
+    </header>
+    <div class="room-top">
+      <div class="cnote"><p>My mirrors don't show your face. They show what you think other people see.</p><b>C.</b></div>
+      <div class="jar-box" id="jar-mirrors"><div class="jar" data-jar="mirrors"></div><p class="jar-state">Locked in the jar: <b>what people think</b></p></div>
+    </div>
+    <div class="mirror-intro card">
+      <p>Each mirror says something cruel. <b>Talk back to it.</b> What would you say to a good friend who said this about themselves? Say it aloud first, then write it. An honest answer breaks the mirror.</p>
+    </div>
+    <div class="mirror-grid" id="mirrorGrid"></div>
+
+  </div>
+  <div class="edge" data-edge="mirrors" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 6 · THE CANDLE ROOM ================= -->
+<section id="candles" class="room r-candles" data-room="candles">
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>6</span></div>
+      <div><p class="rtag"><span>Fear of being alone</span><span>Team puzzle</span><span>~10 min</span></p><h2>The Candle Room</h2></div>
+    </header>
+    <div class="room-top">
+      <div class="cnote"><p>This is the darkest room in my house. Nobody has ever found the way out of it alone. That's why I love it.</p><b>C.</b></div>
+      <div class="jar-box" id="jar-candles"><div class="jar" data-jar="candles"></div><p class="jar-state">Locked in the jar: <b>being alone</b></p></div>
+    </div>
+
+    <div class="fc card" id="fc">
+      <p class="card-title">The five candles</p>
+      <p class="fc-rule">There are five candles: <b class="w-red">red</b>, <b class="w-white">white</b>, <b class="w-green">green</b>, <b class="w-blue">blue</b> and <b class="w-gold">gold</b>. Light them in the right order, and the wax will melt and give you a key. Light them in the wrong order, and a cold wind blows them all out.</p>
+      <div class="fc-team">
+        <p><b>Team rules.</b> The four clues are split between you. Each person opens <b>one</b> clue on their own phone and reads it to the team. Don't show your screen! Fewer than four of you? Someone opens two.</p>
+        <div class="envs" id="envs"></div>
+        <div class="clue-open" id="clueOpen" hidden></div>
+      </div>
+      <div class="altar" id="altar">
+        <div class="altar-candles" id="altarCandles"></div>
+        <div class="altar-base" aria-hidden="true"></div>
+      </div>
+      <p class="fc-msg" id="fcMsg">Tap the candles in the order you think is right.</p>
+      <div class="btn-row center">
+        <button class="btn btn-ghost" id="fcReset">Blow them out</button>
+        <button class="btn btn-ghost" id="fcHint">Ask the Collector for a hint</button>
+      </div>
+      <p class="fc-hint" id="fcHintText" hidden></p>
+    </div>
+  </div>
+  <div class="edge" data-edge="candles" aria-hidden="true"></div>
+</section>
+
+<!-- ================= OPTIONAL · THE CLOCK ROOM ================= -->
+<section id="clock" class="room r-clock" data-room="clock">
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum opt"><span>+</span></div>
+      <div><p class="rtag"><span class="opt-pill">Optional extra</span><span>Fear of change</span><span>~5 min</span></p><h2>The Clock Room</h2></div>
+    </header>
+    <div class="cnote"><p>In this room, time stopped in 1926. Nothing changes here. Some people find that comforting.</p><b>C.</b></div>
+    <div class="clock-grid">
+      <div class="big-clock" id="bigClock" data-art="clock"></div>
+      <div class="clock-side">
+        <p>Take turns. Spin the hand and answer the question it stops on.</p>
+        <button class="btn big btn-gold" id="spinBtn">Spin the clock</button>
+        <div class="clock-q card" id="clockQ" hidden><span class="cq-n" id="cqN">12</span><p id="cqText"></p></div>
+        <button class="btn small btn-ghost" id="clockReset">Start again</button>
+      </div>
+    </div>
+  </div>
+  <div class="edge" data-edge="clock" aria-hidden="true"></div>
+</section>
+
+<!-- ================= 6 · THE FRONT DOOR ================= -->
+<section id="door" class="room r-door" data-room="door">
+  <div class="dawn-sky" aria-hidden="true"><i class="sun"></i></div>
+  <div class="dawn-birds" aria-hidden="true"><span data-art="bird"></span><span data-art="bird"></span><span data-art="bird"></span></div>
+  <div class="wrap">
+    <header class="room-head">
+      <div class="rnum"><span>7</span></div>
+      <div><p class="rtag"><span>Finale</span><span>~6 min</span></p><h2>The Front Door</h2></div>
+    </header>
+    <div class="door-grid">
+      <div class="door-col">
+        <div class="final-door" id="finalDoor" data-art="doorLocks"></div>
+        <div class="mat-zone" id="matZone">
+          <button class="mat-key" id="matKey" aria-label="An old key"></button>
+          <div class="mat" id="mat" aria-hidden="true"><span>WELCOME</span></div>
+        </div>
+      </div>
+      <div class="door-side">
+        <p class="door-say" id="doorSay">Back in the hall. Five locks. Tap each lock to use a key.</p>
+        <p class="door-keys" id="doorKeys"></p>
+      </div>
+      <div class="door-cat" data-art="boo" aria-hidden="true"></div>
+    </div>
+
+    <div class="leave card" id="leave" hidden>
+      <p class="card-title">Leave a fear at the door</p>
+      <p>Write one fear you'd like to leave in this house. It can be big or small. Read it aloud if you want to.</p>
+      <div class="gb-form"><textarea id="fearText" maxlength="120" rows="2" placeholder="I'm leaving behind my fear of..."></textarea><button class="btn btn-gold" id="fearBtn">Put it in a jar</button></div>
+      <div class="fear-shelf" id="fearShelf"></div>
+      <div class="btn-row center"><button class="btn big btn-gold" id="openDoor" disabled>Open the door</button></div>
+    </div>
+
+    <div class="out" id="out" hidden>
+      <p class="out-big">You're out.</p>
+      <p class="out-sub">It's morning. The birds are singing. The house behind you looks... smaller.</p>
+    </div>
+
+    <div class="pass" id="pass" hidden>
+      <p class="pass-top">Exit pass</p>
+      <div class="pass-av" id="passAv"></div>
+      <p class="pass-name" id="passName">Guest</p>
+      <p class="pass-line">walked out of the Fear Collector's mansion at dawn,<br>carrying a little less than before.</p>
+      <div class="pass-stats" id="passStats"></div>
+      <p class="pass-left" id="passLeft" hidden></p>
+      <button class="btn btn-ghost" id="toTop">Back to the gate</button>
+    </div>
+  </div>
+  <div class="edge" data-edge="dawn" aria-hidden="true"></div>
+</section>
+</main>
+
+<footer class="foot">
+  <div class="mansion lit-all" data-art="mansion"></div>
+  <p>Happy Halloween</p>
+</footer>
+
+<!-- ================= OVERLAYS ================= -->
+<div id="cinema" hidden><div class="cin-line" id="cinLine"></div><p class="cin-tap">tap to continue</p><button class="cin-skip" id="cinSkip">Skip</button></div>
+<div id="flash" hidden></div>
+<div id="toasts" aria-live="polite"></div>
+<div id="fakes" aria-live="polite"></div>
